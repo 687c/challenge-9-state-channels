@@ -2,7 +2,7 @@
 
 const { ethers } = require("hardhat");
 
-module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
+module.exports = async ({ getNamedAccounts, deployments /* getChainId */ }) => {
   const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
 
@@ -12,17 +12,19 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
     log: true,
   });
 
-  const streamer = await ethers.getContract("Streamer", deployer);
+  const streamer = await ethers.getContract("streamer", deployer);
 
-  //console.log("\n 🤹  Sending ownership to frontend address...\n");
-  //Checkpoint 2: change address to your frontend address vvvv
-  //const ownerTx = await streamer.transferOwnership("** YOUR FRONTEND ADDRESS **");
+  console.log("\n 🤹  Sending ownership to frontend address...\n");
+  // Checkpoint 2: change address to your frontend address vvvv
+  const ownerTx = await streamer.transferOwnership(
+    "0x9C469a5D1B061dfB51b07e7D0a46861bb92605fc"
+  );
 
-  // console.log("\n       confirming...\n");
-  // const ownershipResult = await ownerTx.wait();
-  // if (ownershipResult) {
-  //   console.log("       ✅ ownership transferred successfully!\n");
-  // }
+  console.log("\n       confirming...\n");
+  const ownershipResult = await ownerTx.wait();
+  if (ownershipResult) {
+    console.log("       ✅ ownership transferred successfully!\n");
+  }
 };
 
 module.exports.tags = ["Streamer"];

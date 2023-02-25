@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.4;
+pragma solidity >=0.8.0 <0.9.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
@@ -22,6 +22,9 @@ contract Streamer is Ownable {
         - updates the balances mapping with the eth received in the function call
         - emits an Opened event
         */
+        require(balances[msg.sender] == 0, "you are already running a channel");
+        balances[msg.sender] += msg.value;
+        emit Opened(msg.sender, msg.value);
     }
 
     function timeLeft(address channel) public view returns (uint256) {
@@ -59,6 +62,21 @@ contract Streamer is Ownable {
             - adjust the channel balance, and pay the contract owner. (Get the owner address withthe `owner()` function)
             - emit the Withdrawn event
         */
+        address voucherSigner = ecrecover(
+            prefixedHashed,
+            voucher.sig.v,
+            voucher.sig.r,
+            voucher.sig.s
+        );
+        require(
+            balances[voucherSigner] > voucher.updatedBalance,
+            "You do not have a running channel"
+        );
+        uint256 payment = balances[voucherSigner] - voucher.updatedBalance;
+        (bool sent, ) = voucherSigner.call{value: payment}("");
+        require(sent, "unable to make payment");
+        balances[voucherSigner] = voucher.updatedBalance;
+        emit Withdrawn(voucherSigner, payment);
     }
 
     /*
@@ -69,6 +87,11 @@ contract Streamer is Ownable {
     - updates canCloseAt[msg.sender] to some future time
     - emits a Challenged event
     */
+    function challengeChannel() public {
+        require(balances[msg.sender] > 0, "You do not have a channel running");
+        canCloseAt[msg.sender] += 60 seconds;
+        emit Challenged(msg.sender);
+    }
 
     /*
     Checkpoint 6b: Close the channel
@@ -79,6 +102,13 @@ contract Streamer is Ownable {
     - sends the channel's remaining funds to msg.sender, and sets the balance to 0
     - emits the Closed event
     */
+    function defundChannel() public {
+        require(timeLeft(msg.sender) == 0, "You have a chennel running");
+        (bool sent, ) = address(this).call{value: balances[msg.sender]}("");
+        require(sent, "close channel and transfer funds to you failed");
+        balances[msg.sender] = 0;
+        emit Closed(msg.sender);
+    }
 
     struct Voucher {
         uint256 updatedBalance;

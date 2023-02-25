@@ -329,8 +329,6 @@ function App(props) {
     return window.userChannel;
   }
 
-
-  
   //This is the wisdome the client is paying for. It'd better be good.
   let recievedWisdom = "";
 
@@ -474,7 +472,18 @@ function App(props) {
        *  recreate the packed, hashed, and arrayified message from reimburseService (above),
        *  and then use ethers.utils.verifyMessage() to confirm that voucher signer was
        *  `clientAddress`. (If it wasn't, log some error message and return).
-      */
+       */
+
+      const packed = ethers.utils.solidityPack(["uint256"], [updatedBalance]);
+      const hashed = ethers.utils.keccak256(packed);
+      const arrayified = ethers.utils.arrayify(hashed);
+
+      const signerAddress = ethers.utils.verifyMessage(arrayified, voucher.data.signature);
+
+      if (signerAddress !== clientAddress) {
+        console.error("signer address and client address do no match");
+        return;
+      }
 
       const existingVoucher = vouchers()[clientAddress];
 
@@ -846,15 +855,12 @@ function App(props) {
                           AutoPay
                         </Checkbox>
                       </Col>
-
                       <Col span={16}>
                         <Card title="Received Wisdom">
                           <span id={"recievedWisdom-" + userAddress}></span>
                         </Card>
                       </Col>
-
-                      {/* Checkpoint 6: challenge & closure
-
+                      Checkpoint 6: challenge & closure
                       <Col span={5}>
                         <Button
                           disabled={hasClosingChannel()}
@@ -887,7 +893,7 @@ function App(props) {
                         >
                           Close and withdraw funds
                         </Button>
-                      </Col> */}
+                      </Col>
                     </Row>
                   </div>
                 ) : hasClosedChannel() ? (
